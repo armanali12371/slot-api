@@ -151,16 +151,9 @@ const getUserById = async (req, res) => {
     }
 
     const user = userDoc.data();
-    res.status(200).json({
-      message: 'User retrieved successfully!',
-      user: {
-        UserID: userDoc.id,
-        Name: user.name,
-        Email: user.email,
-        Role: user.role,
-        // CreatedAt: new Date(user.createdAt.toDate()).toLocaleString(),
-      },
-    });
+    res.status(200).json(
+      user
+    );
   } catch (error) {
     console.error('Error retrieving user:', error.message);
     res.status(500).json({ error: error.message });
