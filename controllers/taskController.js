@@ -1,6 +1,6 @@
 const { db } = require('../models/firebase');
 const { verifyToken } = require('../middleware/authMiddleware');
-const { sendEmail } = require('../utils/emailService');
+const sendTaskNotification = require('../utils/emailService'); 
 
 // Create Task function
 const createTask = async (req, res) => {
@@ -175,6 +175,7 @@ const getTaskList = async (req, res) => {
   
     console.log('User ID:', req.userId, 'Role:', userRole);
   
+    // Validate input fields
     if (!title || !description || !status) {
       return res.status(400).json({ error: 'Title, description, and status are required.' });
     }
@@ -192,6 +193,13 @@ const getTaskList = async (req, res) => {
     }
   
     try {
+      // Get the assignee's email from Firestore
+      const assigneeDoc = await db.collection('users').doc(taskAssignee).get();
+      if (!assigneeDoc.exists) {
+        return res.status(400).json({ error: 'Assignee not found.' });
+      }
+      const assigneeEmail = assigneeDoc.data().email;
+  
       // Create the task in Firestore
       const taskRef = await db.collection('tasks').add({
         title,
@@ -203,32 +211,11 @@ const getTaskList = async (req, res) => {
         createdBy, // User who created the task
       });
   
-      // Fetch the assignee's data to send an email
-      const assigneeDoc = await db.collection('users').doc(taskAssignee).get();
-      const assigneeData = assigneeDoc.data();
-  
-      if (assigneeData) {
-        const emailBody = `
-          Hi ${assigneeData.name},
-  
-          A new task has been assigned to you:
-  
-          Title: ${title}
-          Description: ${description}
-          Status: ${status}
-  
-          Please log in to your account to view and manage this task.
-  
-          Best regards,
-          Task Management System
-        `;
-  
-        // Simulate sending an email
-        sendEmail(assigneeData.email, 'New Task Assigned', emailBody);
-      }
+      // Send email to the assignee
+      sendTaskNotification(assigneeEmail, { title, description, status });
   
       res.status(201).json({
-        message: 'Task created successfully, and the user has been notified!',
+        message: 'Task created successfully!',
         taskId: taskRef.id,
       });
     } catch (error) {
@@ -236,5 +223,6 @@ const getTaskList = async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   };
+  
   
 module.exports = { createTask, getTaskList, deleteTask ,updateTaskStatus,createTaskEmail};
